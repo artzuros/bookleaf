@@ -248,7 +248,7 @@ SUPABASE_KEY=your_supabase_key
 
 ## 🏆 Self-Rating
 
-
+Honestly, n8n was a whole vibe throughout this project. I came in thinking "yeah, I know n8n," but man, this thing has layers—parallel branches, item aggregation, error handling, node pairing issues... I was constantly learning something new. Also took a detour into HuggingFace embeddings instead of OpenAI, which was cool but definitely made me rethink the workflow a couple times (and by rethink I mean stare at the screen wondering why nothing works). Those moments were annoying in the moment but honestly pretty fun looking back—nothing beats that feeling when you finally figure out why the merge node is breaking everything. I'd give myself an 8/10—the system works, it's multi-channel, has RAG, logs everything, escalates to humans when needed, and the identity unification design is solid. But yeah, there were some unnecessary rabbit holes (I spent way too long on that merge node before realizing a simpler sequential flow would work), and I know there are edge cases I could have handled better. 
 
 ---
 
