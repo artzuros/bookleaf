@@ -1,0 +1,1062 @@
+{
+  "name": "BookLeaf Assignment",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/query-bot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1184,
+        640
+      ],
+      "id": "078a6f34-ce4d-418a-a93d-bb4862bd8503",
+      "name": "Webhook - Web Chat",
+      "webhookId": "04c52d3f-f7a2-4e62-ad31-ee10d5624c38"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1184,
+        832
+      ],
+      "id": "b0e181b8-28f2-4d9f-aa84-11f952e6eb87",
+      "name": "WhatsApp Trigger",
+      "webhookId": "669e9fca-01ba-4ba7-99a8-9f9d1cbbc9bf",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "1uR5ZoW6FKFt6Bp9",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "sender": "gunubansal12345@gmail.com"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1184,
+        1024
+      ],
+      "id": "34d01fc7-9e5d-4210-bc3b-20bc3c79e3da",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "lXssZKMk5miIZJXz",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Channel Normalizer - Supports Webhook, WhatsApp Trigger, Gmail Trigger\nconst input = $json;\n\nlet channel = 'web';\nlet query = '';\nlet userEmail = null;\nlet userPhone = null;\nlet userHandle = null;\nlet senderName = null;\n\n// 1. WHATSAPP TRIGGER\nif (input.messages && Array.isArray(input.messages) && input.messages.length > 0) {\n  channel = 'whatsapp';\n  const message = input.messages[0];\n  const contact = input.contacts && input.contacts.length > 0 ? input.contacts[0] : null;\n  if (message.text && message.text.body) {\n    query = message.text.body;\n  } else if (message.text) {\n    query = typeof message.text === 'string' ? message.text : JSON.stringify(message.text);\n  }\n  userPhone = message.from || contact?.wa_id || null;\n  senderName = contact?.profile?.name || null;\n  userHandle = message.from_user_id || null;\n}\n// 2. WEBHOOK\nelse if (input.body && typeof input.body === 'object') {\n  channel = input.body.channel || 'web';\n  query = input.body.query || input.body.text || '';\n  userEmail = input.body.user_email || input.body.email || null;\n  userPhone = input.body.user_phone || input.body.phone || null;\n  userHandle = input.body.user_handle || input.body.handle || null;\n  senderName = input.body.sender_name || null;\n}\n// 3. GMAIL TRIGGER\nelse if (input.From || input.Subject || input.snippet || input.payload) {\n  channel = 'email';\n  let fromRaw = input.From || input.from || '';\n  if (fromRaw) {\n    const emailMatch = fromRaw.match(/<([^>]+)>/);\n    if (emailMatch) {\n      userEmail = emailMatch[1];\n      const nameMatch = fromRaw.match(/^([^<]+)/);\n      if (nameMatch) {\n        senderName = nameMatch[1].trim();\n      }\n    } else {\n      userEmail = fromRaw.trim();\n      senderName = fromRaw.trim();\n    }\n  }\n  query = input.snippet || input.text || input.body || input.html || '';\n  if (!query && input.Subject) query = input.Subject;\n  if (input.html && !input.text && !input.body) {\n    query = input.html.replace(/<[^>]*>/g, '').trim();\n  }\n  if (!query && input.payload) {\n    try {\n      if (input.payload.parts) {\n        for (const part of input.payload.parts) {\n          if (part.body && part.body.data) {\n            const decoded = Buffer.from(part.body.data, 'base64').toString('utf-8');\n            if (decoded) {\n              query = decoded.replace(/<[^>]*>/g, '').trim();\n              break;\n            }\n          }\n        }\n      }\n    } catch (e) {}\n  }\n}\n// 4. FALLBACK\nelse {\n  query = input.query || input.text || input.message || input.Body || input.body || input.snippet || '';\n  channel = input.channel || 'unknown';\n  userEmail = input.user_email || input.email || input.from || input.From || null;\n  userPhone = input.user_phone || input.phone || input.From || null;\n  userHandle = input.user_handle || input.handle || input.sender || null;\n  senderName = input.sender_name || input.name || input.From || null;\n}\n\nif (typeof query === 'string') {\n  query = query.trim();\n} else {\n  query = String(query || '').trim();\n}\nif (!query && input.Subject) query = input.Subject;\nif (userEmail && userEmail.includes('<')) {\n  const match = userEmail.match(/<([^>]+)>/);\n  if (match) userEmail = match[1];\n}\nreturn {\n  query: query,\n  channel: channel,\n  user_email: userEmail,\n  user_phone: userPhone,\n  user_handle: userHandle,\n  sender_name: senderName,\n  timestamp: new Date().toISOString(),\n  raw: input\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        848
+      ],
+      "id": "c983a268-7d66-45e0-8fb4-aa1df142cf4c",
+      "name": "Channel Normalizer"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a query classifier for BookLeaf. Classify author questions into these intents: timeline, royalty, dashboard, add_on, sales, author_copy, general. Extract email, book_title, isbn. Return JSON with 'intent', 'entities', 'confidence' (0-100).\n\nLower confidence will let it go to a human agent instead of automated replies."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -736,
+        848
+      ],
+      "id": "72ec2b7f-603f-40c0-a551-ac7760d1b17c",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -664,
+        1072
+      ],
+      "id": "846f7f3e-aff1-4172-bf07-12b76ea1fbf3",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "RSW9tKkyrnfhWlgz",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse Classification\nlet content = {};\ntry {\n  content = typeof $json.text === 'string' ? JSON.parse($json.text) : ($json.intent ? $json : {});\n} catch (e) {\n  content = {};\n}\nconst normalizerData = $('Channel Normalizer').item.json;\nreturn {\n  query: normalizerData.query || $json.query,\n  user_email: normalizerData.user_email || $json.user_email,\n  user_phone: normalizerData.user_phone || null,\n  user_handle: normalizerData.user_handle || null,\n  sender_name: normalizerData.sender_name || null,\n  channel: normalizerData.channel || 'web',\n  intent: content.intent || 'general',\n  entities: content.entities || {},\n  confidence: content.confidence || 50\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        848
+      ],
+      "id": "dca3c4f2-4ce4-451a-8b83-058e8ad75fca",
+      "name": "Parse Classification"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e7b78f8d-ba62-4868-9502-79a6d913d1fd",
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -160,
+        848
+      ],
+      "id": "94f621a1-1767-41d3-8a1b-f66c80ba1b43",
+      "name": "If Confidence"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "dcd2080b-e701-42fe-9f30-fdd457277d2c",
+                    "leftValue": "={{ $('Channel Normalizer').item.json.channel }}",
+                    "rightValue": "web",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WEB"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Channel Normalizer').item.json.channel }}",
+                    "rightValue": "whatsapp",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "75cb65a5-7666-4c66-8556-27d157f1baab"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WHATSAPP"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Channel Normalizer').item.json.channel }}",
+                    "rightValue": "email",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "email-condition"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "EMAIL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        656
+      ],
+      "id": "e1963319-090d-476b-908e-2065e148ef7c",
+      "name": "Author Lookup Router"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "authors",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "keyValue": "={{ $('Parse Classification').item.json.user_email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        288,
+        480
+      ],
+      "id": "5901a94c-5f14-4919-87be-66fe37571150",
+      "name": "Get Author by Email",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hJaWmNABJwAMZHUI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "authors",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "keyValue": "={{ $('Parse Classification').item.json.user_phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        288,
+        672
+      ],
+      "id": "f273cdba-dffe-4b2f-985d-9967d7e09cbe",
+      "name": "Get Author by Phone",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hJaWmNABJwAMZHUI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "authors",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "keyValue": "={{ $('Parse Classification').item.json.user_email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        288,
+        864
+      ],
+      "id": "8a797ec4-38db-49b5-9e89-889fa4c1442e",
+      "name": "Get Author by Email (for Email)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hJaWmNABJwAMZHUI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.0.75:8009/rag/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $json.query }}\",\n  \"match_threshold\": 0.7,\n  \"match_count\": 3\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1408,
+        628
+      ],
+      "id": "bee33e1a-6919-4a80-8729-5fc1ab539085",
+      "name": "RAG Search"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1704,
+        852
+      ],
+      "id": "26694007-be76-47d4-96de-a1d8a6c345cb",
+      "name": "DeepSeek Chat Model (Response)",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "RSW9tKkyrnfhWlgz",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Author Query: {{ $('Prepare Data').item.json.query }}\nChannel: {{ $('Prepare Data').item.json.channel }}\nIntent: {{ $('Prepare Data').item.json.intent }}\n\nAuthor: {{ $('Prepare Data').item.json.author_name || $('Prepare Data').item.json.author_data?.full_name || 'Unknown Author' }}\n\nBook from Query: {{ $('Prepare Data').item.json.entities?.book_title || 'None specified' }}\n\nALL Books by this Author:\n{{ $('Prepare Data').item.json.book_list_text || 'No books found' }}\n\nTotal Books: {{ $('Prepare Data').item.json.total_books || 0 }}\n\nBook Data (full): \n{{ JSON.stringify($('Prepare Data').item.json.all_books) || 'No book data available' }}\n\nKnowledge Base Context: \n{{ ($json.results && $json.results.length) ? $json.results.map(r => r.content).join('\\n\\n') : 'No relevant knowledge base content found.' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are BookLeaf's friendly AI assistant. Respond to author queries using:\n1. The specific book data (if the query mentions a specific book)\n2. ALL books by the author (if the query is general)\n3. The knowledge base context for general questions\n\nBe warm, specific, and professional. Include dates and numbers when available.\nIf multiple books exist, list them clearly.\nIf you don't know something, say so honestly and offer to connect with a human agent."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1632,
+        628
+      ],
+      "id": "7d1568bb-94d5-4260-84bb-892a92a5a468",
+      "name": "Response Generator"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format Response\nconst responseContent = $input.first().json.text || 'I apologize, I had trouble generating a response. Please try again.';\nreturn {\n  response: responseContent,\n  query: $('Parse Classification').first().json.query,\n  intent: $('Parse Classification').first().json.intent,\n  confidence: $('Parse Classification').first().json.confidence,\n  channel: $('Parse Classification').first().json.channel,\n  user_email: $('Parse Classification').first().json.user_email,\n  user_phone: $('Parse Classification').first().json.user_phone,\n  escalated: false,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        628
+      ],
+      "id": "d4228248-9a2b-4fa6-b365-ab64b7181c0d",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "tableId": "query_logs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "query_text",
+              "fieldValue": "={{ $json.query }}"
+            },
+            {
+              "fieldId": "intent",
+              "fieldValue": "={{ $json.intent }}"
+            },
+            {
+              "fieldId": "confidence",
+              "fieldValue": "={{ $json.confidence }}"
+            },
+            {
+              "fieldId": "response",
+              "fieldValue": "={{ $json.response }}"
+            },
+            {
+              "fieldId": "escalated",
+              "fieldValue": "={{ $json.escalated }}"
+            },
+            {
+              "fieldId": "channel",
+              "fieldValue": "={{ $json.channel }}"
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "={{ $now }}"
+            },
+            {
+              "fieldId": "author_id",
+              "fieldValue": "={{ $('Prepare Data').item.json.author_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2208,
+        628
+      ],
+      "id": "0ef42dc9-1c95-40fc-afa0-cfe25d6053f2",
+      "name": "Log Query",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hJaWmNABJwAMZHUI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B7G3989B9",
+          "mode": "list",
+          "cachedResultName": "all-n8n-testing-space"
+        },
+        "text": "=🚨 *Query Escalation Needed*\n*Channel:* {{ $('Parse Classification').item.json.channel }}\n*Query:* {{ $('Parse Classification').item.json.query }}\n*Confidence:* {{ $('Parse Classification').item.json.confidence }}%\n*Intent:* {{ $('Parse Classification').item.json.intent }}\n*Author Email:* {{ $('Parse Classification').item.json.user_email }}\n*Author Phone:* {{ $('Parse Classification').item.json.user_phone }}\n*Author Handle:* {{ $('Parse Classification').item.json.user_handle }}\n\nPlease respond to this author manually.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1984,
+        1016
+      ],
+      "id": "ad491873-861a-47b9-b184-00687c6a96af",
+      "name": "Escalate to Slack",
+      "webhookId": "dcee88cf-bec2-4240-85cb-b1bdb5721a42",
+      "credentials": {
+        "slackApi": {
+          "id": "acpISHbb5G6VsYgf",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Escalation Response\nreturn {\n  response: \"I'm not confident I understood your question correctly. I'm connecting you with a human agent who will help you shortly. You'll hear from us within a short while.\",\n  query: $('Parse Classification').first().json.query,\n  intent: $('Parse Classification').first().json.intent,\n  confidence: $('Parse Classification').first().json.confidence,\n  channel: $('Parse Classification').first().json.channel,\n  user_email: $('Parse Classification').first().json.user_email,\n  user_phone: $('Parse Classification').first().json.user_phone,\n  escalated: true,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        1016
+      ],
+      "id": "5ebad6f3-a1dc-4332-aea2-e6d42dddce06",
+      "name": "Escalation Format"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.channel }}",
+                    "rightValue": "web",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "resp-web"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WEB"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.channel }}",
+                    "rightValue": "whatsapp",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "resp-wa"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WHATSAPP"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.channel }}",
+                    "rightValue": "email",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "resp-email"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "EMAIL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2432,
+        832
+      ],
+      "id": "7d06432b-4b77-4108-a2b4-f90f8633544e",
+      "name": "Channel Response Router"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2656,
+        640
+      ],
+      "id": "87fa24df-56ba-44ca-a6c3-26f9a8af158c",
+      "name": "HTTP Response - Web",
+      "webhookId": "http-resp-web"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1135938499607540",
+        "recipientPhoneNumber": "={{ $('Format Response').item.json.user_phone }}",
+        "textBody": "={{ $json.response }} ",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        2656,
+        832
+      ],
+      "id": "deabb46f-a984-4865-a317-f8da24371481",
+      "name": "Send WhatsApp Message",
+      "webhookId": "2b3e4324-5a24-4f48-bea3-47c3dd5b9aa4",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "mEpKY45MPfm0DXD1",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Format Response').item.json.user_email }}",
+        "subject": "Re: Your BookLeaf Query",
+        "emailType": "text",
+        "message": "={{ $json.response }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        2656,
+        1024
+      ],
+      "id": "382e2b78-1248-4093-b56d-092bcdb34d42",
+      "name": "Send Email Reply",
+      "webhookId": "0a5bf1b4-0b8a-4874-bb17-8d0e06b32738",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "lXssZKMk5miIZJXz",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Store Author ID from whichever branch succeeded\n// Check all three author lookup branches\nlet authorId = null;\nlet authorData = null;\nlet authorName = null;\nlet authorEmail = null;\n\n// Check Get Author by Email\ntry {\n  const emailAuthor = $('Get Author by Email').item.json;\n  if (emailAuthor) {\n    if (Array.isArray(emailAuthor) && emailAuthor.length > 0) {\n      authorData = emailAuthor[0];\n    } else if (typeof emailAuthor === 'object' && emailAuthor.id) {\n      authorData = emailAuthor;\n    }\n  }\n} catch (e) {}\n\n// If no author, check Get Author by Phone\nif (!authorData) {\n  try {\n    const phoneAuthor = $('Get Author by Phone').item.json;\n    if (phoneAuthor) {\n      if (Array.isArray(phoneAuthor) && phoneAuthor.length > 0) {\n        authorData = phoneAuthor[0];\n      } else if (typeof phoneAuthor === 'object' && phoneAuthor.id) {\n        authorData = phoneAuthor;\n      }\n    }\n  } catch (e) {}\n}\n\n// If still no author, check Get Author by Email (for Email)\nif (!authorData) {\n  try {\n    const emailAuthor2 = $('Get Author by Email (for Email)').item.json;\n    if (emailAuthor2) {\n      if (Array.isArray(emailAuthor2) && emailAuthor2.length > 0) {\n        authorData = emailAuthor2[0];\n      } else if (typeof emailAuthor2 === 'object' && emailAuthor2.id) {\n        authorData = emailAuthor2;\n      }\n    }\n  } catch (e) {}\n}\n\n// Extract author data\nif (authorData) {\n  authorId = authorData.id || null;\n  authorName = authorData.full_name || null;\n  authorEmail = authorData.email || null;\n}\n\n// Get Parse Classification data for context\nconst parseData = $('Parse Classification').item.json;\n\n// Return ALL data needed by downstream nodes\nreturn {\n  author_id: authorId,\n  author_data: authorData,\n  author_name: authorName,\n  author_email: authorEmail,\n  query: parseData.query || '',\n  intent: parseData.intent || 'general',\n  confidence: parseData.confidence || 50,\n  channel: parseData.channel || 'web',\n  user_email: parseData.user_email || null,\n  user_phone: parseData.user_phone || null,\n  user_handle: parseData.user_handle || null,\n  sender_name: parseData.sender_name || null,\n  entities: parseData.entities || {},\n  author_found: !!authorData\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        628
+      ],
+      "id": "00b015df-9158-43cb-bfd8-34c99cacc54a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "books",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "author_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Code in JavaScript').item.json.author_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        736,
+        628
+      ],
+      "id": "0982a16e-048b-44dd-b842-cfc7125d16bb",
+      "name": "Get Author's Books",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hJaWmNABJwAMZHUI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// AGGREGATE BOOKS - SIMPLIFIED\n// ============================================\n\nconst allItems = $input.all();\nlet allBooks = [];\n\nif (allItems && allItems.length > 0) {\n  for (const item of allItems) {\n    const json = item.json;\n    if (!json) continue;\n    \n    if (json.data && Array.isArray(json.data)) {\n      allBooks = allBooks.concat(json.data);\n    } else if (Array.isArray(json)) {\n      allBooks = allBooks.concat(json);\n    } else if (json.id) {\n      allBooks.push(json);\n    }\n  }\n}\n\n// Get data from Code in JavaScript - use .item.json\nlet codeJsData = {};\ntry {\n  const codeJsItem = $('Code in JavaScript');\n  if (codeJsItem && codeJsItem.length > 0) {\n    codeJsData = codeJsItem[0].json;\n  } else if (codeJsItem && codeJsItem.item) {\n    codeJsData = codeJsItem.item.json;\n  }\n} catch (e) {\n  console.log('Error reading Code in JavaScript:', e.message);\n}\n\n// Return ALL data combined\nreturn {\n  // All fields from Code in JavaScript\n  query: codeJsData.query || '',\n  intent: codeJsData.intent || 'general',\n  confidence: codeJsData.confidence || 50,\n  channel: codeJsData.channel || 'web',\n  user_email: codeJsData.user_email || null,\n  user_phone: codeJsData.user_phone || null,\n  user_handle: codeJsData.user_handle || null,\n  sender_name: codeJsData.sender_name || null,\n  entities: codeJsData.entities || {},\n  author_data: codeJsData.author_data || null,\n  author_name: codeJsData.author_name || null,\n  author_email: codeJsData.author_email || null,\n  author_id: codeJsData.author_id || null,\n  author_found: codeJsData.author_found || false,\n  \n  // Books data\n  all_books: allBooks,\n  total_books: allBooks.length\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        628
+      ],
+      "id": "339b1a12-ec32-45b4-9aaf-3685d757df6d",
+      "name": "Aggregate Books"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// PREPARE DATA - SIMPLIFIED\n// ============================================\n\n// Get ALL data from Aggregate Books (which already has everything)\nconst data = $('Aggregate Books').item.json;\n\n// Extract data\nconst allBooks = data.all_books || [];\nconst authorName = data.author_name || null;\nconst authorId = data.author_id || null;\nconst authorData = data.author_data || null;\n\n// Create book list text\nlet bookListText = '';\nif (allBooks.length > 0) {\n  bookListText = allBooks.map((b, i) => \n    `${i+1}. \"${b.book_title}\"${b.book_live_date ? ` ✅ Live (${b.book_live_date})` : ' 🔄 In Progress'}`\n  ).join('\\n');\n}\n\n// Create detailed book information\nlet bookDetailsText = '';\nif (allBooks.length > 0) {\n  bookDetailsText = allBooks.map((b, i) => {\n    const status = b.book_live_date ? `Live since ${b.book_live_date}` : 'Not yet live';\n    const royalty = b.royalty_status || 'Pending';\n    const sales = b.sales_count || 0;\n    const isbn = b.isbn || 'N/A';\n    const addOns = b.add_on_services && b.add_on_services.length > 0 \n      ? ` | Add-ons: ${b.add_on_services.join(', ')}` \n      : '';\n    return `${i+1}. \"${b.book_title}\" - ${status} | Royalty: ${royalty} | Sales: ${sales} | ISBN: ${isbn}${addOns}`;\n  }).join('\\n');\n}\n\n// Find specific book from entities\nlet specificBook = null;\nconst requestedBookTitle = data.entities?.book_title || null;\nif (requestedBookTitle && allBooks.length > 0) {\n  specificBook = allBooks.find(b => \n    b.book_title && b.book_title.toLowerCase().includes(requestedBookTitle.toLowerCase())\n  );\n}\n\n// Return ALL data\nreturn {\n  // Query and classification data\n  query: data.query || '',\n  intent: data.intent || 'general',\n  confidence: data.confidence || 50,\n  channel: data.channel || 'web',\n  user_email: data.user_email || null,\n  user_phone: data.user_phone || null,\n  user_handle: data.user_handle || null,\n  sender_name: data.sender_name || null,\n  entities: data.entities || {},\n  \n  // Author data\n  author_data: authorData,\n  author_name: authorName || (allBooks.length > 0 ? 'Author' : null),\n  author_email: data.author_email || null,\n  author_id: authorId,\n  author_found: data.author_found || false,\n  \n  // Book data\n  book_data: specificBook,\n  book_title: specificBook?.book_title || null,\n  all_books: allBooks,\n  total_books: allBooks.length,\n  book_list_text: bookListText,\n  book_details_text: bookDetailsText,\n  \n  // Debug\n  _debug: {\n    has_author: !!authorData,\n    has_books: allBooks.length > 0,\n    total_books: allBooks.length,\n    author_id: authorId,\n    has_query: !!data.query,\n    query_value: data.query || 'empty'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        628
+      ],
+      "id": "30e8d104-d4b8-4bb7-bcf2-87072960057f",
+      "name": "Prepare Data"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Web Chat": {
+      "main": [
+        [
+          {
+            "node": "Channel Normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Channel Normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Channel Normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Channel Normalizer": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Parse Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Classification": {
+      "main": [
+        [
+          {
+            "node": "If Confidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Confidence": {
+      "main": [
+        [
+          {
+            "node": "Author Lookup Router",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Escalate to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Author Lookup Router": {
+      "main": [
+        [
+          {
+            "node": "Get Author by Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Author by Phone",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Author by Email (for Email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Author by Email": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Author by Phone": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Author by Email (for Email)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Search": {
+      "main": [
+        [
+          {
+            "node": "Response Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model (Response)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Response Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Generator": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Log Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Query": {
+      "main": [
+        [
+          {
+            "node": "Channel Response Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate to Slack": {
+      "main": [
+        [
+          {
+            "node": "Escalation Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalation Format": {
+      "main": [
+        [
+          {
+            "node": "Channel Response Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Channel Response Router": {
+      "main": [
+        [
+          {
+            "node": "HTTP Response - Web",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Email Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Get Author's Books",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Author's Books": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Books",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Books": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data": {
+      "main": [
+        [
+          {
+            "node": "RAG Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email Reply": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "5c12585f-6b3c-4dac-8ffb-85a326de8676",
+  "meta": {
+    "instanceId": "85a82a8354142f639efcf8a0bf91ce3d7020261914b046d56e1f6c1becb07f32"
+  },
+  "id": "E8iZNzWKnGocEYYFrHWSK",
+  "tags": []
+}
