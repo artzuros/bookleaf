@@ -252,19 +252,6 @@ SUPABASE_KEY=your_supabase_key
 
 ---
 
-## 📦 Submission Checklist
-
-- [x] **BookLeaf Assignment.json** - n8n workflow export
-- [x] **rag_service.py** - FastAPI RAG microservice
-- [x] **requirements.txt** - Python dependencies
-- [x] **FAQs (Knowledge Base) file** - 1200-line knowledge base
-- [x] **User Identity Exploration.ipynb** - Jupyter notebook with all techniques
-- [x] **Screenshots** - n8n workflow, Postman, Gmail, Slack, Supabase
-- [x] **README.md** - Complete documentation
-- [x] **Loom Video** - 15-minute walkthrough
-
----
-
 ## 📞 Contact & Submission
 
 **Submitted to:** `hr@bookleafpub.in`  
